@@ -1,0 +1,200 @@
+openapi: 3.0.3
+info:
+  title: Petstore
+  version: 1.0.0
+  description: A small pet store API used to demo openapi-client-gen.
+servers:
+  - url: https://petstore.example.com/v1
+security:
+  - bearerAuth: []
+  - apiKeyAuth: []
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      summary: List pets
+      description: Returns the pets in the store, optionally filtered by status.
+      parameters:
+        - name: status
+          in: query
+          description: Only return pets with this status.
+          schema:
+            $ref: '#/components/schemas/PetStatus'
+        - name: limit
+          in: query
+          description: Maximum number of pets to return.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: X-Request-Id
+          in: header
+          description: Optional id echoed in server logs.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of pets.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createPet
+      summary: Create a pet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewPet'
+      responses:
+        '201':
+          description: The created pet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '422':
+          description: Invalid pet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /pets/{petId}:
+    parameters:
+      - $ref: '#/components/parameters/PetId'
+    get:
+      operationId: getPetById
+      summary: Get a pet by id
+      responses:
+        '200':
+          description: The pet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: updatePet
+      summary: Replace a pet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewPet'
+      responses:
+        '200':
+          description: The updated pet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deletePet
+      summary: Delete a pet
+      responses:
+        '204':
+          description: Deleted.
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  parameters:
+    PetId:
+      name: petId
+      in: path
+      required: true
+      description: The pet id.
+      schema:
+        type: integer
+  responses:
+    NotFound:
+      description: No pet with that id.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Missing or wrong credentials.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    PetStatus:
+      type: string
+      description: Where the pet is in the adoption process.
+      enum: [available, pending, sold]
+    Owner:
+      type: object
+      description: The person who looks after the pet.
+      required: [name]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phones:
+          type: array
+          items:
+            type: string
+    NewPet:
+      type: object
+      description: Fields a client sends to create or replace a pet.
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: The pet's name.
+        status:
+          $ref: '#/components/schemas/PetStatus'
+        tags:
+          type: array
+          items:
+            type: string
+        owner:
+          $ref: '#/components/schemas/Owner'
+    Pet:
+      description: A pet in the store.
+      allOf:
+        - $ref: '#/components/schemas/NewPet'
+        - type: object
+          required: [id, status]
+          properties:
+            id:
+              type: integer
+              format: int64
+            birthDate:
+              type: string
+              format: date
+              nullable: true
+            previousOwners:
+              type: array
+              items:
+                $ref: '#/components/schemas/Owner'
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
